@@ -42,6 +42,35 @@ from pocket_tts.preprocessing.schema import BoundaryType
 from pocket_tts.audiobook.generator import AudiobookGenerator as AudiobookGeneratorEngine
 from pocket_tts.config import ConfigManager
 
+logger = logging.getLogger(__name__)
+
+
+def detect_encoding(file_path: str) -> str:
+    """
+    Detect file encoding by trying common encodings.
+
+    Args:
+        file_path: Path to text file
+
+    Returns:
+        Detected encoding name
+    """
+    # Common encodings for Russian text
+    encodings = ['utf-8', 'windows-1251', 'cp1251', 'koi8-r', 'iso-8859-5']
+
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                f.read()
+            logger.info(f"Detected encoding: {encoding}")
+            return encoding
+        except (UnicodeDecodeError, LookupError):
+            continue
+
+    # Fallback to utf-8 with error handling
+    logger.warning("Could not detect encoding, using utf-8 with error handling")
+    return 'utf-8'
+
 
 class AudiobookGenerator(QMainWindow):
     """Main GUI application for audiobook generation."""
@@ -89,7 +118,7 @@ class AudiobookGenerator(QMainWindow):
 
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle("Audiobook Generator")
+        self.setWindowTitle("Генератор аудиокниг")
         self.setGeometry(100, 100, 1200, 800)
 
         # Create central widget with tabs
@@ -110,12 +139,12 @@ class AudiobookGenerator(QMainWindow):
         self.create_regenerate_tab()
 
         # Status bar
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage("Готов")
 
     def create_generate_tab(self):
         """Create the Generate Audiobook tab (existing UI)."""
         generate_widget = QWidget()
-        self.tab_widget.addTab(generate_widget, "Generate Audiobook")
+        self.tab_widget.addTab(generate_widget, "Генерация аудиокниги")
 
         # Main layout for generate tab
         layout = QVBoxLayout(generate_widget)
@@ -133,7 +162,7 @@ class AudiobookGenerator(QMainWindow):
         from .regenerate_tab import RegenerateTab
 
         regenerate_tab = RegenerateTab()
-        self.tab_widget.addTab(regenerate_tab, "Regenerate Chunks")
+        self.tab_widget.addTab(regenerate_tab, "Перегенерация фрагментов")
 
     def create_header_section(self, parent_layout):
         """Create header section with file selectors and image."""
@@ -141,40 +170,40 @@ class AudiobookGenerator(QMainWindow):
         header_layout = QHBoxLayout()
 
         # Left side: File selection group
-        file_group = QGroupBox("File Selection")
+        file_group = QGroupBox("Выбор файлов")
         file_layout = QVBoxLayout(file_group)
 
         # Text file selection - label on left, selector and button on right
         text_file_layout = QHBoxLayout()
         text_file_layout.setSpacing(5)  # Reduce spacing between widgets
-        text_label = QLabel("Text File:")
-        text_label.setFixedWidth(60)  # Fixed width for label alignment
+        text_label = QLabel("Текстовый файл:")
+        text_label.setToolTip("Выберите текстовый файл для преобразования в аудиокнигу")
+        text_label.setFixedWidth(100)  # Fixed width for label alignment
         text_file_layout.addWidget(text_label)
-        self.text_file_path = QLabel("No file selected")
+        self.text_file_path = QLabel("Файл не выбран")
         self.text_file_path.setStyleSheet("border: 1px solid #ccc; padding: 5px;")
         text_file_layout.addWidget(self.text_file_path)
-        self.browse_text_btn = QPushButton("Browse...")
+        self.browse_text_btn = QPushButton("Обзор...")
         self.browse_text_btn.clicked.connect(self.browse_text_file)
         text_file_layout.addWidget(self.browse_text_btn)
 
         # Voice selection - label on left, selector and button on right
         voice_file_layout = QHBoxLayout()
         voice_file_layout.setSpacing(5)  # Reduce spacing between widgets
-        voice_label = QLabel("Voice:")
-        voice_label.setFixedWidth(60)  # Fixed width for label alignment
+        voice_label = QLabel("Голос:")
+        voice_label.setToolTip("Выберите голос для озвучивания текста")
+        voice_label.setFixedWidth(100)  # Fixed width for label alignment
         voice_file_layout.addWidget(voice_label)
         self.voice_combo = QComboBox()
-        self.voice_combo.addItem("alba (default)")
-        self.voice_combo.addItem("marius")
-        self.voice_combo.addItem("javert")
-        self.voice_combo.addItem("jean")
-        self.voice_combo.addItem("fantine")
-        self.voice_combo.addItem("cosette")
-        self.voice_combo.addItem("eponine")
-        self.voice_combo.addItem("azelma")
-        self.voice_combo.addItem("Custom WAV...")
+        # Silero TTS Russian voices (voice cloning not supported)
+        self.voice_combo.addItem("baya (женский, по умолчанию)")
+        self.voice_combo.addItem("aidar (мужской)")
+        self.voice_combo.addItem("eugene (мужской)")
+        self.voice_combo.addItem("kseniya (женский)")
+        self.voice_combo.addItem("xenia (женский)")
+        self.voice_combo.setToolTip("Выберите один из доступных русских голосов Silero TTS")
         voice_file_layout.addWidget(self.voice_combo)
-        self.browse_voice_btn = QPushButton("Browse...")
+        self.browse_voice_btn = QPushButton("Обзор...")
         self.browse_voice_btn.clicked.connect(self.browse_voice_file)
         voice_file_layout.addWidget(self.browse_voice_btn)
 
@@ -216,17 +245,18 @@ class AudiobookGenerator(QMainWindow):
         container_layout.setContentsMargins(0, 0, 0, 0)
 
         # Checkbox to toggle parameters visibility
-        self.params_checkbox = QCheckBox("Show Parameters")
+        self.params_checkbox = QCheckBox("Показать параметры")
         self.params_checkbox.setChecked(False)  # Start unchecked (hidden)
+        self.params_checkbox.setToolTip("Показать/скрыть дополнительные параметры генерации")
         container_layout.addWidget(self.params_checkbox)
 
         # Parameters group (not checkable)
-        self.params_group = QGroupBox("Parameters")
+        self.params_group = QGroupBox("Параметры")
         # Use horizontal layout for 7-column structure
         layout = QHBoxLayout(self.params_group)
 
         # Column 0 (NEW): TTS Core Parameters
-        tts_core_group = self.create_collapsible_group("TTS Core Parameters")
+        tts_core_group = self.create_collapsible_group("Основные параметры TTS")
         tts_core_layout = QFormLayout(tts_core_group)
 
         # Temperature spinner
@@ -234,54 +264,60 @@ class AudiobookGenerator(QMainWindow):
         self.temperature_spin.setRange(0.0, 1.5)
         self.temperature_spin.setSingleStep(0.05)
         self.temperature_spin.setDecimals(2)
+        self.temperature_spin.setToolTip("Температура генерации (0.5-0.9 рекомендуется). Выше = более вариативная речь")
         tts_core_value = (
             self.config.tts_core.get("temperature", 0.7)
             if hasattr(self.config, "tts_core")
             else 0.7
         )
         self.temperature_spin.setValue(tts_core_value)
-        tts_core_layout.addRow("Temperature:", self.temperature_spin)
+        tts_core_layout.addRow("Температура:", self.temperature_spin)
 
         # EOS Threshold spinner
         self.eos_threshold_spin = QDoubleSpinBox()
         self.eos_threshold_spin.setRange(-10.0, 0.0)
         self.eos_threshold_spin.setSingleStep(0.5)
         self.eos_threshold_spin.setDecimals(1)
+        self.eos_threshold_spin.setToolTip("Порог окончания фразы (-4.0 по умолчанию). Ниже = более длинные фразы")
         eos_value = (
             self.config.tts_core.get("eos_threshold", -4.0)
             if hasattr(self.config, "tts_core")
             else -4.0
         )
         self.eos_threshold_spin.setValue(eos_value)
-        tts_core_layout.addRow("EOS Threshold:", self.eos_threshold_spin)
+        tts_core_layout.addRow("Порог EOS:", self.eos_threshold_spin)
 
         # Frames After EOS spinner
         self.frames_after_eos_spin = QSpinBox()
         self.frames_after_eos_spin.setRange(0, 10)
+        self.frames_after_eos_spin.setToolTip("Количество кадров после окончания фразы (2 по умолчанию)")
         frames_value = (
             self.config.tts_core.get("frames_after_eos", 2)
             if hasattr(self.config, "tts_core")
             else 2
         )
         self.frames_after_eos_spin.setValue(frames_value)
-        tts_core_layout.addRow("Frames After EOS:", self.frames_after_eos_spin)
+        tts_core_layout.addRow("Кадры после EOS:", self.frames_after_eos_spin)
 
         # Column 1: Chunking parameters
-        chunking_group = self.create_collapsible_group("Chunking Settings")
+        chunking_group = self.create_collapsible_group("Настройки разбиения")
         chunking_layout = QFormLayout(chunking_group)
 
         self.chunking_mode_combo = QComboBox()
         self.chunking_mode_combo.addItem("sentence")
         self.chunking_mode_combo.addItem("paragraph")
-        chunking_layout.addRow("Mode:", self.chunking_mode_combo)
+        self.chunking_mode_combo.setToolTip("Режим разбиения текста: по предложениям или абзацам")
+        chunking_layout.addRow("Режим:", self.chunking_mode_combo)
 
         self.min_words_spin = QSpinBox()
         self.min_words_spin.setRange(1, 20)
-        chunking_layout.addRow("Min Words:", self.min_words_spin)
+        self.min_words_spin.setToolTip("Минимальное количество слов в одном фрагменте")
+        chunking_layout.addRow("Мин. слов:", self.min_words_spin)
 
         self.max_words_spin = QSpinBox()
         self.max_words_spin.setRange(20, 200)
-        chunking_layout.addRow("Max Words:", self.max_words_spin)
+        self.max_words_spin.setToolTip("Максимальное количество слов в одном фрагменте")
+        chunking_layout.addRow("Макс. слов:", self.max_words_spin)
 
         # Set default values from config
         self.chunking_mode_combo.setCurrentText(self.config.chunking["mode"])
@@ -289,49 +325,55 @@ class AudiobookGenerator(QMainWindow):
         self.max_words_spin.setValue(self.config.chunking["max_words"])
 
         # Column 2: Post-Processing Pauses Group
-        pause_group = self.create_collapsible_group("Pause Durations (ms)")
+        pause_group = self.create_collapsible_group("Длительность пауз (мс)")
         pause_layout = QFormLayout(pause_group)
 
         self.sentence_pause_spin = QSpinBox()
         self.sentence_pause_spin.setRange(0, 2000)
         self.sentence_pause_spin.setSingleStep(50)
         self.sentence_pause_spin.setValue(self.config.pauses["base_durations"]["sentence_end"])
-        pause_layout.addRow("Sentence End:", self.sentence_pause_spin)
+        self.sentence_pause_spin.setToolTip("Пауза после окончания предложения в миллисекундах")
+        pause_layout.addRow("Конец предложения:", self.sentence_pause_spin)
 
         self.paragraph_pause_spin = QSpinBox()
         self.paragraph_pause_spin.setRange(0, 5000)
         self.paragraph_pause_spin.setSingleStep(100)
         self.paragraph_pause_spin.setValue(self.config.pauses["base_durations"]["paragraph_break"])
-        pause_layout.addRow("Paragraph Break:", self.paragraph_pause_spin)
+        self.paragraph_pause_spin.setToolTip("Пауза между абзацами в миллисекундах")
+        pause_layout.addRow("Разрыв абзаца:", self.paragraph_pause_spin)
 
         self.chapter_pause_spin = QSpinBox()
         self.chapter_pause_spin.setRange(0, 10000)
         self.chapter_pause_spin.setSingleStep(500)
         self.chapter_pause_spin.setValue(self.config.pauses["base_durations"]["chapter_start"])
-        pause_layout.addRow("Chapter Start:", self.chapter_pause_spin)
+        self.chapter_pause_spin.setToolTip("Пауза перед началом новой главы в миллисекундах")
+        pause_layout.addRow("Начало главы:", self.chapter_pause_spin)
 
         # Column 3: Quality parameters
-        quality_group = self.create_collapsible_group("Quality Settings")
+        quality_group = self.create_collapsible_group("Настройки качества")
         quality_layout = QFormLayout(quality_group)
 
         self.lsd_steps_spin = QSpinBox()
         self.lsd_steps_spin.setRange(1, 30)
         self.lsd_steps_spin.setValue(self.config.quality.get("lsd_steps", 2))
-        quality_layout.addRow("LSD Steps:", self.lsd_steps_spin)
-        lsd_note = QLabel("(5-10 optimal for quality vs speed)")
+        self.lsd_steps_spin.setToolTip("Количество шагов декодирования LSD (5-10 оптимально для баланса качества и скорости)")
+        quality_layout.addRow("Шаги LSD:", self.lsd_steps_spin)
+        lsd_note = QLabel("(5-10 оптимально для качества и скорости)")
         lsd_note.setStyleSheet("font-size: 10px; color: gray;")
         quality_layout.addRow("", lsd_note)
 
-        self.speed_variation_check = QCheckBox("Enable speed variation")
+        self.speed_variation_check = QCheckBox("Включить вариацию скорости")
         self.speed_variation_check.setChecked(True)
+        self.speed_variation_check.setToolTip("Изменять скорость речи в зависимости от эмоций")
         quality_layout.addRow("", self.speed_variation_check)
 
         # Column 3b: Pause Injection Settings
-        pause_injection_group = self.create_collapsible_group("Pause Injection (ms)")
+        pause_injection_group = self.create_collapsible_group("Вставка пауз (мс)")
         pause_injection_layout = QFormLayout(pause_injection_group)
 
         # Enable/disable checkbox
-        self.pause_injection_check = QCheckBox("Enable punctuation pauses")
+        self.pause_injection_check = QCheckBox("Включить паузы на пунктуации")
+        self.pause_injection_check.setToolTip("Добавлять паузы после знаков препинания")
         pi_config = self.config.pause_injection if hasattr(self.config, "pause_injection") else {}
         self.pause_injection_check.setChecked(pi_config.get("enabled", False))
         pause_injection_layout.addRow(self.pause_injection_check)
@@ -341,14 +383,14 @@ class AudiobookGenerator(QMainWindow):
         self._pause_spinners = {}
 
         PUNCT_LABELS = [
-            (".", "Period (.)"),
-            ("!", "Exclamation (!)"),
-            ("?", "Question (?)"),
-            (",", "Comma (,)"),
-            ("...", "Ellipsis (...)"),
-            ("--", "Em Dash (--)"),
-            (";", "Semicolon (;)"),
-            (":", "Colon (:)"),
+            (".", "Точка (.)"),
+            ("!", "Восклицание (!)"),
+            ("?", "Вопрос (?)"),
+            (",", "Запятая (,)"),
+            ("...", "Многоточие (...)"),
+            ("--", "Тире (--)"),
+            (";", "Точка с запятой (;)"),
+            (":", "Двоеточие (:)"),
         ]
 
         for punct, label in PUNCT_LABELS:
@@ -356,9 +398,10 @@ class AudiobookGenerator(QMainWindow):
             spin.setRange(0.0, 3.0)
             spin.setSingleStep(0.05)
             spin.setDecimals(2)
-            spin.setSuffix(" s")
+            spin.setSuffix(" с")
             spin.setValue(durations.get(punct, 0.0))
             spin.setEnabled(self.pause_injection_check.isChecked())
+            spin.setToolTip(f"Длительность паузы после {label}")
             self._pause_spinners[punct] = spin
             pause_injection_layout.addRow(label + ":", spin)
 
@@ -366,20 +409,22 @@ class AudiobookGenerator(QMainWindow):
         self.pause_injection_check.toggled.connect(self._on_pause_injection_toggled)
 
         # Column 4: M4B Options
-        m4b_group = self.create_collapsible_group("M4B Output Options")
+        m4b_group = self.create_collapsible_group("Параметры M4B")
         m4b_layout = QFormLayout(m4b_group)
 
-        self.m4b_enabled_check = QCheckBox("Convert to M4B")
+        self.m4b_enabled_check = QCheckBox("Конвертировать в M4B")
         self.m4b_enabled_check.setChecked(self.config.m4b.get("enabled", False))
+        self.m4b_enabled_check.setToolTip("Конвертировать финальный аудиофайл в формат M4B (аудиокнига)")
         m4b_layout.addRow(self.m4b_enabled_check)
 
         self.m4b_norm_combo = QComboBox()
         self.m4b_norm_combo.addItems(["none", "peak", "loudness", "simple"])
         self.m4b_norm_combo.setCurrentText(self.config.m4b.get("normalization_type", "peak"))
-        m4b_layout.addRow("Normalization:", self.m4b_norm_combo)
+        self.m4b_norm_combo.setToolTip("Тип нормализации громкости аудио")
+        m4b_layout.addRow("Нормализация:", self.m4b_norm_combo)
 
         # Column 5: Performance Settings
-        performance_group = self.create_collapsible_group("Performance Settings")
+        performance_group = self.create_collapsible_group("Настройки производительности")
         performance_layout = QFormLayout(performance_group)
 
         # Calculate CPU-based worker limit using physical cores
@@ -391,17 +436,17 @@ class AudiobookGenerator(QMainWindow):
         if physical_cores:
             cpu_based_limit = max(1, physical_cores - 1)
             tooltip_text = (
-                f"Temporary override (restart to reset to config). "
-                f"Physical cores: {physical_cores}, Logical CPUs: {logical_cpus}. "
-                f"Limited to {cpu_based_limit} workers for optimal performance."
+                f"Временное переопределение (перезапустите для сброса). "
+                f"Физических ядер: {physical_cores}, Логических CPU: {logical_cpus}. "
+                f"Ограничено {cpu_based_limit} потоками для оптимальной производительности."
             )
         else:
             cpu_count = os.cpu_count() or 4
             cpu_based_limit = max(1, cpu_count - 5)
             tooltip_text = (
-                f"Temporary override (restart to reset to config). "
-                f"psutil not available. CPU count: {cpu_count}. "
-                f"Limited to {cpu_based_limit} workers."
+                f"Временное переопределение (перезапустите для сброса). "
+                f"psutil недоступен. Количество CPU: {cpu_count}. "
+                f"Ограничено {cpu_based_limit} потоками."
             )
 
         print(
@@ -412,7 +457,7 @@ class AudiobookGenerator(QMainWindow):
         self.max_workers_spin.setRange(1, cpu_based_limit)  # Limited by CPU formula
         self.max_workers_spin.setValue(self.config.parallel.get("max_workers", cpu_based_limit))
         self.max_workers_spin.setToolTip(tooltip_text)
-        performance_layout.addRow("Max Workers:", self.max_workers_spin)
+        performance_layout.addRow("Макс. потоков:", self.max_workers_spin)
 
         # Store original config value for reset reference
         self.original_max_workers = self.config.parallel.get("max_workers", 4)
@@ -424,10 +469,11 @@ class AudiobookGenerator(QMainWindow):
         self.max_workers_spin.valueChanged.connect(self.on_max_workers_changed)
 
         # Column 6: ASR Quality Control
-        asr_group = self.create_collapsible_group("ASR Quality Control")
+        asr_group = self.create_collapsible_group("Контроль качества ASR")
         asr_layout = QFormLayout(asr_group)
 
-        self.asr_enabled_check = QCheckBox("Enable ASR Quality Control")
+        self.asr_enabled_check = QCheckBox("Включить контроль качества ASR")
+        self.asr_enabled_check.setToolTip("Проверять качество сгенерированного аудио через распознавание речи")
         asr_enabled = (
             self.config.asr_quality_control.get("enabled", False)
             if hasattr(self.config, "asr_quality_control")
@@ -444,7 +490,8 @@ class AudiobookGenerator(QMainWindow):
             if hasattr(self.config, "asr_quality_control")
             else 0.85
         )
-        asr_layout.addRow("Threshold:", self.asr_threshold_spin)
+        self.asr_threshold_spin.setToolTip("Минимальный порог качества распознавания (0.0-1.0)")
+        asr_layout.addRow("Порог:", self.asr_threshold_spin)
 
         self.asr_max_retries_spin = QSpinBox()
         self.asr_max_retries_spin.setRange(1, 10)
@@ -453,7 +500,8 @@ class AudiobookGenerator(QMainWindow):
             if hasattr(self.config, "asr_quality_control")
             else 3
         )
-        asr_layout.addRow("Max Retries:", self.asr_max_retries_spin)
+        self.asr_max_retries_spin.setToolTip("Максимальное количество попыток перегенерации")
+        asr_layout.addRow("Макс. попыток:", self.asr_max_retries_spin)
 
         self.asr_temp_decrement_spin = QDoubleSpinBox()
         self.asr_temp_decrement_spin.setRange(0.01, 0.5)
@@ -463,7 +511,8 @@ class AudiobookGenerator(QMainWindow):
             if hasattr(self.config, "asr_quality_control")
             else 0.1
         )
-        asr_layout.addRow("Temp Decrement:", self.asr_temp_decrement_spin)
+        self.asr_temp_decrement_spin.setToolTip("Уменьшение температуры при каждой попытке")
+        asr_layout.addRow("Уменьшение темп.:", self.asr_temp_decrement_spin)
 
         # Add subgroups to main parameters layout (8 columns, TTS core first)
         layout.addWidget(tts_core_group)
@@ -489,22 +538,25 @@ class AudiobookGenerator(QMainWindow):
 
     def create_progress_section(self, parent_layout):
         """Create progress section."""
-        group = QGroupBox("Generation Progress")
+        group = QGroupBox("Прогресс генерации")
         layout = QVBoxLayout(group)
 
         # Progress info
         progress_layout = QHBoxLayout()
 
-        self.chunk_progress_label = QLabel("Chunks: 0/0")
+        self.chunk_progress_label = QLabel("Фрагменты: 0/0")
         self.chunk_progress_label.setStyleSheet("color: #00FF00;")
+        self.chunk_progress_label.setToolTip("Количество обработанных фрагментов")
         progress_layout.addWidget(self.chunk_progress_label)
 
-        self.time_elapsed_label = QLabel("Elapsed: 0:00")
+        self.time_elapsed_label = QLabel("Прошло: 0:00")
         self.time_elapsed_label.setStyleSheet("color: #00FF00;")
+        self.time_elapsed_label.setToolTip("Время, прошедшее с начала генерации")
         progress_layout.addWidget(self.time_elapsed_label)
 
-        self.eta_label = QLabel("ETA: --:--")
+        self.eta_label = QLabel("Осталось: --:--")
         self.eta_label.setStyleSheet("color: #00FF00;")
+        self.eta_label.setToolTip("Примерное время до завершения")
         progress_layout.addWidget(self.eta_label)
 
         layout.addLayout(progress_layout)
@@ -516,12 +568,14 @@ class AudiobookGenerator(QMainWindow):
 
         # Control buttons
         button_layout = QHBoxLayout()
-        self.start_btn = QPushButton("Generate Audiobook")
+        self.start_btn = QPushButton("Создать аудиокнигу")
+        self.start_btn.setToolTip("Начать генерацию аудиокниги из выбранного текста")
         self.start_btn.clicked.connect(self.start_generation)
         self.start_btn.setEnabled(False)
         button_layout.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("Stop")
+        self.stop_btn = QPushButton("Остановить")
+        self.stop_btn.setToolTip("Остановить текущую генерацию")
         self.stop_btn.clicked.connect(self.stop_generation)
         self.stop_btn.setEnabled(False)
         button_layout.addWidget(self.stop_btn)
@@ -532,7 +586,7 @@ class AudiobookGenerator(QMainWindow):
 
     def create_results_section(self, parent_layout):
         """Create results section."""
-        group = QGroupBox("Results")
+        group = QGroupBox("Результаты")
         layout = QVBoxLayout(group)
 
         self.results_text = QTextEdit()
@@ -541,6 +595,7 @@ class AudiobookGenerator(QMainWindow):
         self.results_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # Set bright green text color
         self.results_text.setStyleSheet("QTextEdit { color: #00FF00; }")
+        self.results_text.setToolTip("Лог процесса генерации и результаты")
         layout.addWidget(self.results_text)
 
         parent_layout.addWidget(group)
@@ -763,9 +818,8 @@ class AudiobookGenerator(QMainWindow):
     ) -> bool:
         """Preprocess text file automatically during generation."""
         try:
-            # Read text file
-            with open(text_file, "r", encoding="utf-8") as f:
-                text = f.read()
+            # Read text file with automatic encoding detection
+            text = self._read_text_file_with_encoding(text_file)
 
             # Initialize components
             detector = StructureDetector()
@@ -847,6 +901,13 @@ class AudiobookGenerator(QMainWindow):
             self.results_text.append(f"❌ Preprocessing failed: {str(e)}")
             return False
 
+    def _read_text_file_with_encoding(self, file_path: str) -> str:
+        """Read text file with automatic encoding detection for Russian text."""
+        encoding = detect_encoding(file_path)
+        self.results_text.append(f"📄 Detected encoding: {encoding}")
+        with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+            return f.read()
+
     def stop_generation(self):
         """Stop audiobook generation."""
         if (
@@ -877,23 +938,23 @@ class AudiobookGenerator(QMainWindow):
             self.generation_progress_bar.setRange(0, 0)  # Indeterminate
 
         # Update labels
-        self.chunk_progress_label.setText(f"Chunks: {current}/{total}")
+        self.chunk_progress_label.setText(f"Фрагменты: {current}/{total}")
 
         elapsed_str = f"{elapsed // 60}:{elapsed % 60:02d}"
-        self.time_elapsed_label.setText(f"Elapsed: {elapsed_str}")
+        self.time_elapsed_label.setText(f"Прошло: {elapsed_str}")
 
         if "eta_seconds" in progress_data:
             eta = progress_data["eta_seconds"]
             eta_str = f"{eta // 60}:{eta % 60:02d}"
-            self.eta_label.setText(f"ETA: {eta_str}")
+            self.eta_label.setText(f"Осталось: {eta_str}")
         else:
-            self.eta_label.setText("ETA: --:--")
+            self.eta_label.setText("Осталось: --:--")
 
         # Update window title with progress
         if total > 0:
-            self.setWindowTitle(f"Audiobook Generator - {percentage}% Complete")
+            self.setWindowTitle(f"Генератор аудиокниг - {percentage}% завершено")
         else:
-            self.setWindowTitle("Audiobook Generator - Processing...")
+            self.setWindowTitle("Генератор аудиокниг - Обработка...")
 
         # Force immediate GUI update to prevent blocking during parallel processing
         from qtpy.QtWidgets import QApplication
@@ -950,10 +1011,10 @@ class AudiobookGenerator(QMainWindow):
 
         # Reset progress display
         self.generation_progress_bar.setValue(0)
-        self.chunk_progress_label.setText("Chunks: 0/0")
-        self.time_elapsed_label.setText("Elapsed: 0:00")
-        self.eta_label.setText("ETA: --:--")
-        self.setWindowTitle("Audiobook Generator")
+        self.chunk_progress_label.setText("Фрагменты: 0/0")
+        self.time_elapsed_label.setText("Прошло: 0:00")
+        self.eta_label.setText("Осталось: --:--")
+        self.setWindowTitle("Генератор аудиокниг")
 
         if result.get("success", False) and result.get("asr_investigation_required"):
             investigation_log = result["asr_investigation_required"]

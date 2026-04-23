@@ -64,60 +64,67 @@ class RegenerateTab(QWidget):
 
     def create_folder_section(self, parent_layout):
         """Create TTS folder selection section."""
-        group = QGroupBox("TTS Folder Selection")
+        group = QGroupBox("Выбор папки TTS")
         layout = QHBoxLayout(group)
 
         # Label
-        layout.addWidget(QLabel("TTS Folder:"))
+        layout.addWidget(QLabel("Папка TTS:"))
 
         # Path display
-        self.folder_path_label = QLabel("No folder selected")
+        self.folder_path_label = QLabel("Папка не выбрана")
         self.folder_path_label.setStyleSheet("border: 1px solid #ccc; padding: 5px;")
         self.folder_path_label.setMinimumWidth(400)
+        self.folder_path_label.setToolTip("Выберите папку с результатами генерации TTS")
         layout.addWidget(self.folder_path_label)
 
         # Browse button
-        browse_btn = QPushButton("Browse...")
+        browse_btn = QPushButton("Обзор...")
         browse_btn.clicked.connect(self.browse_tts_folder)
+        browse_btn.setToolTip("Выбрать папку TTS с аудио фрагментами")
         layout.addWidget(browse_btn)
 
         parent_layout.addWidget(group)
 
     def create_search_section(self, parent_layout):
         """Create search section."""
-        group = QGroupBox("Search Chunks")
+        group = QGroupBox("Поиск фрагментов")
         layout = QHBoxLayout(group)
 
         # Keyword search
-        layout.addWidget(QLabel("Keyword:"))
+        layout.addWidget(QLabel("Ключевое слово:"))
         self.keyword_input = QLineEdit()
+        self.keyword_input.setToolTip("Введите текст для поиска в фрагментах")
         self.keyword_input.returnPressed.connect(self.search_by_keyword)
         layout.addWidget(self.keyword_input)
 
-        search_btn = QPushButton("Search")
+        search_btn = QPushButton("Поиск")
         search_btn.clicked.connect(self.search_by_keyword)
+        search_btn.setToolTip("Искать фрагменты по ключевому слову")
         layout.addWidget(search_btn)
 
         # Separator
         layout.addSpacing(20)
 
         # Chunk ID search
-        layout.addWidget(QLabel("Chunk ID:"))
+        layout.addWidget(QLabel("ID фрагмента:"))
         self.chunk_id_input = QLineEdit()
         self.chunk_id_input.setMaximumWidth(80)
+        self.chunk_id_input.setToolTip("Введите номер фрагмента")
         self.chunk_id_input.returnPressed.connect(self.search_by_id)
         layout.addWidget(self.chunk_id_input)
 
-        go_btn = QPushButton("Go")
+        go_btn = QPushButton("Перейти")
         go_btn.clicked.connect(self.search_by_id)
+        go_btn.setToolTip("Перейти к фрагменту по ID")
         layout.addWidget(go_btn)
 
         # Separator
         layout.addSpacing(20)
 
         # Fail report button
-        load_fail_btn = QPushButton("Load Fail Report")
+        load_fail_btn = QPushButton("Загрузить отчет об ошибках")
         load_fail_btn.clicked.connect(self.load_fail_report)
+        load_fail_btn.setToolTip("Загрузить список фрагментов с ошибками ASR")
         layout.addWidget(load_fail_btn)
 
         # Stretch to push everything left
@@ -139,49 +146,54 @@ class RegenerateTab(QWidget):
 
     def create_results_section(self, splitter):
         """Create results list section."""
-        group = QGroupBox("Search Results")
+        group = QGroupBox("Результаты поиска")
         layout = QVBoxLayout(group)
 
-        self.results_list_label = QLabel("Results: None")
+        self.results_list_label = QLabel("Результаты: Нет")
         layout.addWidget(self.results_list_label)
 
         self.results_list = QListWidget()
         self.results_list.itemClicked.connect(self.on_chunk_selected)
+        self.results_list.setToolTip("Список найденных фрагментов")
         layout.addWidget(self.results_list)
 
         splitter.addWidget(group)
 
     def create_editor_section(self, splitter):
         """Create chunk editor section."""
-        group = QGroupBox("Chunk Editor")
+        group = QGroupBox("Редактор фрагмента")
         layout = QVBoxLayout(group)
 
         # Chunk ID label
-        self.chunk_id_label = QLabel("Chunk: None selected")
+        self.chunk_id_label = QLabel("Фрагмент: Не выбран")
         layout.addWidget(self.chunk_id_label)
 
         # Text editor
-        text_label = QLabel("Text:")
+        text_label = QLabel("Текст:")
         layout.addWidget(text_label)
 
         self.text_editor = QTextEdit()
         self.text_editor.setMaximumHeight(100)
+        self.text_editor.setToolTip("Редактировать текст фрагмента перед перегенерацией")
         layout.addWidget(self.text_editor)
 
         # Emotion row
         emotion_layout = QHBoxLayout()
-        emotion_layout.addWidget(QLabel("Emotion:"))
+        emotion_layout.addWidget(QLabel("Эмоция:"))
         self.emotion_combo = QComboBox()
-        self.emotion_combo.addItems(["Neutral", "Joy", "Anger", "Sadness",
-                                    "Fear", "Surprise", "Disgust"])
+        self.emotion_combo.addItems(["Нейтральная", "Радость", "Гнев", "Грусть",
+                                    "Страх", "Удивление", "Отвращение"])
+        self.emotion_combo.setToolTip("Выбрать эмоцию для генерации")
         emotion_layout.addWidget(self.emotion_combo)
 
-        emotion_layout.addWidget(QLabel("Confidence:"))
+        emotion_layout.addWidget(QLabel("Уверенность:"))
         self.confidence_label = QLabel("0.00")
+        self.confidence_label.setToolTip("Уверенность определения эмоции")
         emotion_layout.addWidget(self.confidence_label)
 
-        view_details_btn = QPushButton("View Details")
+        view_details_btn = QPushButton("Подробности")
         view_details_btn.clicked.connect(self.show_emotion_dialog)
+        view_details_btn.setToolTip("Показать детальные оценки эмоций")
         emotion_layout.addWidget(view_details_btn)
 
         emotion_layout.addStretch()
@@ -189,9 +201,10 @@ class RegenerateTab(QWidget):
 
         # Voice selection
         voice_layout = QHBoxLayout()
-        voice_layout.addWidget(QLabel("Voice:"))
+        voice_layout.addWidget(QLabel("Голос:"))
         self.voice_combo = QComboBox()
-        self.voice_combo.addItem("-- Select Voice --", None)
+        self.voice_combo.addItem("-- Выберите голос --", None)
+        self.voice_combo.setToolTip("Выберите голос для перегенерации")
         voice_layout.addWidget(self.voice_combo)
         voice_layout.addStretch()
         layout.addLayout(voice_layout)
@@ -199,30 +212,34 @@ class RegenerateTab(QWidget):
         # Button row
         button_layout = QHBoxLayout()
 
-        self.play_orig_btn = QPushButton("Play Original")
+        self.play_orig_btn = QPushButton("Воспроизвести оригинал")
         self.play_orig_btn.clicked.connect(self.play_original_audio)
         self.play_orig_btn.setEnabled(False)
+        self.play_orig_btn.setToolTip("Воспроизвести оригинальный аудио фрагмент")
         button_layout.addWidget(self.play_orig_btn)
 
-        self.regenerate_btn = QPushButton("Regenerate")
+        self.regenerate_btn = QPushButton("Перегенерировать")
         self.regenerate_btn.clicked.connect(self.regenerate_chunk)
         self.regenerate_btn.setEnabled(False)
+        self.regenerate_btn.setToolTip("Создать новую версию аудио фрагмента")
         button_layout.addWidget(self.regenerate_btn)
 
-        self.play_new_btn = QPushButton("Play New")
+        self.play_new_btn = QPushButton("Воспроизвести новый")
         self.play_new_btn.clicked.connect(self.play_regenerated_audio)
         self.play_new_btn.setEnabled(False)
+        self.play_new_btn.setToolTip("Воспроизвести перегенерированный фрагмент")
         button_layout.addWidget(self.play_new_btn)
 
-        self.save_btn = QPushButton("Save")
+        self.save_btn = QPushButton("Сохранить")
         self.save_btn.clicked.connect(self.save_regenerated_chunk)
         self.save_btn.setEnabled(False)
+        self.save_btn.setToolTip("Заменить оригинал новой версией")
         button_layout.addWidget(self.save_btn)
 
         layout.addLayout(button_layout)
 
         # Status label
-        self.status_label = QLabel("Ready")
+        self.status_label = QLabel("Готов")
         self.status_label.setStyleSheet("color: #00FF00; font-weight: bold;")
         layout.addWidget(self.status_label)
 
@@ -230,26 +247,29 @@ class RegenerateTab(QWidget):
 
     def create_concat_section(self, parent_layout):
         """Create concatenation section."""
-        group = QGroupBox("Concatenation")
+        group = QGroupBox("Объединение")
         layout = QHBoxLayout(group)
 
-        concat_btn = QPushButton("Save Concatenated Audiobook")
+        concat_btn = QPushButton("Сохранить объединенную аудиокнигу")
         concat_btn.clicked.connect(self.concatenate_all_chunks)
+        concat_btn.setToolTip("Объединить все фрагменты в один файл аудиокниги")
         layout.addWidget(concat_btn)
 
         layout.addWidget(QLabel("M4B:"))
         self.m4b_checkbox = QCheckBox()
+        self.m4b_checkbox.setToolTip("Конвертировать в формат M4B")
         layout.addWidget(self.m4b_checkbox)
 
-        layout.addWidget(QLabel("Normalization:"))
+        layout.addWidget(QLabel("Нормализация:"))
         self.norm_combo = QComboBox()
         self.norm_combo.addItems(["peak", "loudness", "simple", "none"])
         self.norm_combo.setCurrentText("peak")
+        self.norm_combo.setToolTip("Тип нормализации громкости")
         layout.addWidget(self.norm_combo)
 
         layout.addStretch()
 
-        self.output_label = QLabel("Output: None")
+        self.output_label = QLabel("Выход: Нет")
         layout.addWidget(self.output_label)
 
         parent_layout.addWidget(group)
@@ -358,11 +378,11 @@ class RegenerateTab(QWidget):
 
     def clear_chunk_editor(self):
         """Clear the chunk editor when no chunk is selected."""
-        self.chunk_id_label.setText("Chunk: None selected")
+        self.chunk_id_label.setText("Фрагмент: Не выбран")
         self.text_editor.clear()
-        self.emotion_combo.setCurrentText("Neutral")
+        self.emotion_combo.setCurrentText("Нейтральная")
         self.confidence_label.setText("0.00")
-        self.voice_combo.setCurrentIndex(0)  # -- Select Voice --
+        self.voice_combo.setCurrentIndex(0)  # -- Выберите голос --
 
         self.play_orig_btn.setEnabled(False)
         self.regenerate_btn.setEnabled(False)
@@ -378,13 +398,13 @@ class RegenerateTab(QWidget):
         """Search chunks by text keyword (case-insensitive)."""
         keyword = self.keyword_input.text().strip()
         if not keyword:
-            QMessageBox.information(self, "Empty Search",
-                "Please enter a keyword to search for.")
+            QMessageBox.information(self, "Пустой поиск",
+                "Пожалуйста, введите ключевое слово для поиска.")
             return
 
         if not self.chunks_data:
-            QMessageBox.information(self, "No Data",
-                "Please select a TTS folder first.")
+            QMessageBox.information(self, "Нет данных",
+                "Пожалуйста, сначала выберите папку TTS.")
             return
 
         # Filter chunks containing keyword
@@ -394,7 +414,7 @@ class RegenerateTab(QWidget):
             if keyword.lower() in text:
                 results.append((idx, chunk))
 
-        self.display_search_results(results, f"Keyword: '{keyword}'")
+        self.display_search_results(results, f"Ключевое слово: '{keyword}'")
 
     def search_by_id(self):
         """Search chunk by exact ID."""
@@ -403,44 +423,44 @@ class RegenerateTab(QWidget):
             return
 
         if not self.chunks_data:
-            QMessageBox.information(self, "No Data",
-                "Please select a TTS folder first.")
+            QMessageBox.information(self, "Нет данных",
+                "Пожалуйста, сначала выберите папку TTS.")
             return
 
         # Normalize ID (handle "5" or "00005")
         try:
             chunk_id = int(chunk_id_str)
         except ValueError:
-            QMessageBox.warning(self, "Invalid ID",
-                "Chunk ID must be a number.")
+            QMessageBox.warning(self, "Неверный ID",
+                "ID фрагмента должен быть числом.")
             return
 
         if chunk_id in self.chunks_data:
             chunk = self.chunks_data[chunk_id]
             self.display_search_results([(chunk_id, chunk)], f"ID: {chunk_id}")
         else:
-            QMessageBox.information(self, "Not Found",
-                f"Chunk {chunk_id} not found in dataset.")
+            QMessageBox.information(self, "Не найдено",
+                f"Фрагмент {chunk_id} не найден в наборе данных.")
 
     def load_fail_report(self):
         """Load failed chunks from fail.log."""
         if not self.tts_folder:
-            QMessageBox.information(self, "No Folder",
-                "Please select a TTS folder first.")
+            QMessageBox.information(self, "Нет папки",
+                "Пожалуйста, сначала выберите папку TTS.")
             return
 
         fail_log = self.tts_folder / "fail.log"
         if not fail_log.exists():
-            QMessageBox.information(self, "No Fail Report",
-                "fail.log not found in the selected TTS folder.")
+            QMessageBox.information(self, "Нет отчета об ошибках",
+                "fail.log не найден в выбранной папке TTS.")
             return
 
         # Parse fail.log
         failed_chunks = self.parse_fail_log(fail_log)
 
         if not failed_chunks:
-            QMessageBox.information(self, "No Failures",
-                "No failed chunks found in fail.log.")
+            QMessageBox.information(self, "Нет ошибок",
+                "Не найдено фрагментов с ошибками в fail.log.")
             return
 
         # Match with chunks_data
@@ -454,7 +474,7 @@ class RegenerateTab(QWidget):
             except (IndexError, ValueError):
                 continue
 
-        self.display_search_results(results, f"Failed Chunks ({len(results)})")
+        self.display_search_results(results, f"Фрагменты с ошибками ({len(results)})")
 
         # Store fail info for showing details later
         self.fail_info = failed_chunks
@@ -514,10 +534,10 @@ class RegenerateTab(QWidget):
     def display_search_results(self, results: List[tuple], title: str):
         """Populate results list widget."""
         self.results_list.clear()
-        self.results_list_label.setText(f"Results: {title}")
+        self.results_list_label.setText(f"Результаты: {title}")
 
         if not results:
-            self.results_list.addItem("No results found")
+            self.results_list.addItem("Результаты не найдены")
             return
 
         for idx, chunk in sorted(results, key=lambda x: x[0]):

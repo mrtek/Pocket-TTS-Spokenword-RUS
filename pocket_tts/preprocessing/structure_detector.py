@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 class StructureDetector:
     """Detects chapters, paragraphs, and sentences in text."""
 
-    # Chapter detection patterns
+    # Chapter detection patterns (English and Russian)
     CHAPTER_PATTERNS = [
+        # English patterns
         r'^Chapter\s+\d+',          # Chapter 1
         r'^Chapter\s+[IVXLCDM]+',   # Chapter IV (Roman numerals)
         r'^CHAPTER\s+\d+',          # CHAPTER 1
@@ -25,6 +26,17 @@ class StructureDetector:
         r'^Prologue\s*$',           # Prologue
         r'^Epilogue\s*$',           # Epilogue
         r'^Introduction\s*$',       # Introduction
+        # Russian patterns
+        r'^Глава\s+\d+',            # Глава 1
+        r'^Глава\s+[IVXLCDM]+',     # Глава IV
+        r'^ГЛАВА\s+\d+',            # ГЛАВА 1
+        r'^Часть\s+\d+',            # Часть 1
+        r'^ЧАСТЬ\s+\d+',            # ЧАСТЬ 1
+        r'^Раздел\s+\d+',           # Раздел 1
+        r'^Книга\s+\d+',            # Книга 1
+        r'^Пролог\s*$',             # Пролог
+        r'^Эпилог\s*$',             # Эпилог
+        r'^Введение\s*$',           # Введение
     ]
 
     # Sentence ending punctuation

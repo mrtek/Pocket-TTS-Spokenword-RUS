@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-__pycache__
+__pycache__/
 *.py[cod]
 *$py.class
 
@@ -43,18 +43,28 @@ coverage.json
 .envrc
 
 # virtualenv
-.venv
+.venv/
 venv/
 ENV/
 
-# egs with manifest files
-egs/*
-!egs/example
-# local datasets
-dataset/*
-!dataset/example
+# Portable installation (Windows)
+.portable/
+ASR/
 
-# personal notebooks & scripts
+# Output files
+Output/
+*.wav
+*.m4b
+*.mp3
+
+# Model files (downloaded at runtime)
+*.safetensors
+*.model
+*.pt
+*.bin
+*.onnx
+
+# Personal notebooks & scripts
 */local_scripts
 */notes
 .vscode/
@@ -62,27 +72,39 @@ dataset/*
 /local_scripts
 /notes
 
-# cython output
-/audiocraft/metrics/abx/*.c
-
-# rust-analyzer
-Cargo.toml
-Cargo.lock
-target/
-
-# nfs files
-.nfs*
-.coverage.*
-
-/weights
-test_en_audio_4000.model
-profile_output*
-*.safetensors
-*.wav
-*.model
-*.pt
-
-# Agents files, use a symlink to AGENTS.md instead. 
+# Claude AI assistant files
+.claude/
 CLAUDE.md
 QWEN.md
-.claude/
+
+# Logs and debug files
+*.log
+*.debug.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Windows specific
+Thumbs.db
+desktop.ini
+
+# PyInstaller
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# User settings
+.pocket_tts_gui_config.json
+
+# Cache directories
+.cache/
+__pycache__/
+
+# Test outputs
+test_output/

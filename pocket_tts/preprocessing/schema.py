@@ -12,14 +12,17 @@ class BoundaryType(Enum):
     SECTION_BREAK = "section_break"
 
 class EmotionType(Enum):
-    """7 emotions detected by DistilRoBERTa."""
+    """6 emotions detected by RuBERT for Russian language."""
     JOY = "joy"
-    SURPRISE = "surprise"
-    ANGER = "anger"
-    NEUTRAL = "neutral"
     SADNESS = "sadness"
+    SURPRISE = "surprise"
     FEAR = "fear"
-    DISGUST = "disgust"
+    ANGER = "anger"
+    NO_EMOTION = "no emotion"
+
+    # Aliases for backward compatibility
+    NEUTRAL = "no emotion"  # Map neutral to no_emotion
+    DISGUST = "anger"  # Map disgust to anger as closest match
 
 @dataclass
 class ChapterInfo:
@@ -203,10 +206,13 @@ class Config:
         if 'mappings' not in self.emotion:
             raise ValueError("Missing emotion.mappings")
 
-        required_emotions = ['joy', 'surprise', 'anger', 'neutral', 'sadness', 'fear', 'disgust']
+        required_emotions = ['joy', 'sadness', 'surprise', 'fear', 'anger', 'no emotion']
         for emotion in required_emotions:
             if emotion not in self.emotion['mappings']:
-                raise ValueError(f"Missing emotion mapping for: {emotion}")
+                # Try alternative names for backward compatibility
+                alt_name = emotion.replace(' ', '_')
+                if alt_name not in self.emotion['mappings']:
+                    raise ValueError(f"Missing emotion mapping for: {emotion}")
 
     def _validate_pauses(self):
         """Validate pauses configuration."""

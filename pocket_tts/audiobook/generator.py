@@ -323,6 +323,7 @@ class AudiobookGenerator:
         self.start_time = time.time()
         self.total_chunks = len(chunks)
         self.current_chunk = 0
+        self.is_cancelled = False  # Reset cancellation flag for new generation
         investigation_log = []
 
         # Setup dataset structure if enabled
@@ -359,13 +360,23 @@ class AudiobookGenerator:
             logger.info(f"Using automatic output path: {output_path}")
 
         try:
-            # Initialize TTS model
-            logger.info("Initializing TTS model...")
-            self._init_tts_model()
+            # Extract speaker name from voice_path
+            import os
+            speaker_name = 'baya'  # Default
+            if os.path.isfile(voice_path):
+                # It's a file path, will use default speaker
+                logger.info("Custom voice file provided, using default speaker 'baya'")
+            else:
+                # It's a speaker name (e.g., 'aidar', 'eugene', 'alba')
+                speaker_name = voice_path.strip()
+                logger.info(f"Using speaker name from voice_path: {speaker_name}")
+
+            # Initialize TTS model with speaker
+            logger.info(f"Initializing TTS model with speaker: {speaker_name}")
+            self._init_tts_model(speaker=speaker_name)
             logger.info("TTS model initialized")
 
             # Convert custom voice files if needed
-            import os
             if os.path.isfile(voice_path):
                 from ..data.voice_converter import VoicePromptConverter
                 converter = VoicePromptConverter()
@@ -772,8 +783,22 @@ class AudiobookGenerator:
         self.current_chunk = 0
 
         while completed_chunks < total_chunks:
+            # Check if generation was cancelled
+            if self.is_cancelled:
+                logger.info("Generation cancelled by user, terminating workers...")
+                # Clear the queue to stop workers from processing more chunks
+                while not chunk_queue.empty():
+                    try:
+                        chunk_queue.get_nowait()
+                    except:
+                        break
+                # Send stop signals to all workers
+                for _ in range(effective_workers):
+                    chunk_queue.put((None, None))
+                break
+
             try:
-                result = result_queue.get(timeout=300)
+                result = result_queue.get(timeout=1)
                 if result is not None:
                     saved_path, chunk_idx, chunk_text = result
                     if saved_path is not None:
@@ -795,26 +820,56 @@ class AudiobookGenerator:
                             }
                             progress_callback(progress_data)
             except Exception as e:
-                logger.warning(f"Error getting result from worker: {e}")
+                # Timeout is expected when checking for cancellation
+                if not isinstance(e, Exception) or "Empty" not in str(type(e)):
+                    logger.warning(f"Error getting result from worker: {e}")
 
-            if completed_chunks % 10 == 0:
+            if completed_chunks % 10 == 0 and completed_chunks > 0:
                 logger.info(f"Completed {completed_chunks}/{total_chunks} chunks")
 
         for worker in workers:
             worker.join(timeout=10)
             if worker.is_alive():
+                logger.info(f"Terminating worker that didn't stop gracefully")
                 worker.terminate()
 
-        logger.info(f"Parallel generation complete. Generated {len(saved_chunk_paths)} chunks")
+        if self.is_cancelled:
+            logger.info(f"Generation cancelled. Processed {len(saved_chunk_paths)}/{total_chunks} chunks before stopping")
+        else:
+            logger.info(f"Parallel generation complete. Generated {len(saved_chunk_paths)} chunks")
 
         saved_chunk_paths.sort()
         return [Path(p) for p in saved_chunk_paths]
 
-    def _init_tts_model(self):
-        """Initialize the TTS model."""
+    def _init_tts_model(self, speaker: str = 'baya'):
+        """Initialize the TTS model with specified speaker."""
         try:
-            from ..models.tts_model import TTSModel
-            self.tts_model = TTSModel.load_model()
+            # Load Silero TTS model for Russian with specified speaker
+            from ..models.silero_adapter import SileroAudiobookAdapter
+
+            # Map common voice names to Silero speakers
+            speaker_map = {
+                'alba': 'baya',      # Default female
+                'marius': 'aidar',   # Male
+                'javert': 'eugene',  # Male
+                'jean': 'aidar',     # Male
+                'fantine': 'xenia',  # Female
+                'cosette': 'kseniya', # Female
+                'eponine': 'xenia',  # Female
+                'azelma': 'baya',    # Female
+            }
+
+            # If speaker is a known voice name, map it; otherwise use as-is
+            silero_speaker = speaker_map.get(speaker.lower(), speaker)
+
+            # Validate speaker name
+            valid_speakers = ['baya', 'aidar', 'kseniya', 'xenia', 'eugene', 'random']
+            if silero_speaker not in valid_speakers:
+                logger.warning(f"Unknown speaker '{silero_speaker}', using 'baya'")
+                silero_speaker = 'baya'
+
+            logger.info(f"Loading Silero TTS with speaker: {silero_speaker}")
+            self.tts_model = SileroAudiobookAdapter.load_model(speaker=silero_speaker)
             logger.info("TTS model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load TTS model: {e}")
@@ -1457,12 +1512,12 @@ def _queue_worker(chunk_queue: Any, voice_path: str, output_dir: str, result_que
     worker_logger = logging.getLogger("pocket_tts.audiobook.generator")
 
     try:
-        from ..models.tts_model import TTSModel
+        from ..models.silero_adapter import SileroAudiobookAdapter
 
         # LOAD MODEL ONCE AT WORKER STARTUP (major optimization)
-        worker_logger.info(f"Worker {worker_id}: Loading TTS model (once per worker)")
+        worker_logger.info(f"Worker {worker_id}: Loading Silero TTS model (once per worker)")
         model_load_start = time.time()
-        tts_model = TTSModel.load_model()
+        tts_model = SileroAudiobookAdapter.load_model()
         model_load_time = time.time() - model_load_start
         worker_logger.info(f"Worker {worker_id}: Model loaded in {model_load_time:.3f}s")
 

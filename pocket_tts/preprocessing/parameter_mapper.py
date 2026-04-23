@@ -23,10 +23,9 @@ class ParameterMapper:
         EmotionType.JOY: {'temperature': 0.90, 'speed_factor': 1.15, 'eos_threshold': -4.0},
         EmotionType.SURPRISE: {'temperature': 0.85, 'speed_factor': 1.10, 'eos_threshold': -3.5},
         EmotionType.ANGER: {'temperature': 0.80, 'speed_factor': 1.10, 'eos_threshold': -3.5},
-        EmotionType.NEUTRAL: {'temperature': 0.70, 'speed_factor': 1.0, 'eos_threshold': -4.0},
+        EmotionType.NO_EMOTION: {'temperature': 0.70, 'speed_factor': 1.0, 'eos_threshold': -4.0},
         EmotionType.SADNESS: {'temperature': 0.65, 'speed_factor': 0.85, 'eos_threshold': -5.0},
         EmotionType.FEAR: {'temperature': 0.60, 'speed_factor': 0.90, 'eos_threshold': -4.5},
-        EmotionType.DISGUST: {'temperature': 0.65, 'speed_factor': 0.95, 'eos_threshold': -4.0}
     }
 
     # Punctuation pause mappings (frames)
@@ -54,9 +53,8 @@ class ParameterMapper:
         EmotionType.FEAR: 1.2,      # Fearful pauses 20% longer
         EmotionType.SADNESS: 1.4,   # Sad pauses 40% longer
         EmotionType.JOY: 0.9,       # Joyful pauses 10% shorter
-        EmotionType.NEUTRAL: 1.0,   # Baseline
+        EmotionType.NO_EMOTION: 1.0,   # Baseline
         EmotionType.SURPRISE: 1.1,  # Slightly longer for surprise
-        EmotionType.DISGUST: 1.1,   # Slightly longer for disgust
     }
 
     def __init__(self,
@@ -157,8 +155,12 @@ class ParameterMapper:
         """
         emotion_str = emotion.value
 
-        # Get base emotion parameters
-        emotion_params = self.emotion_mappings.get(emotion_str, self.emotion_mappings['neutral'])
+        # Get base emotion parameters (fallback to 'no emotion' if not found)
+        emotion_params = self.emotion_mappings.get(emotion_str, self.emotion_mappings.get('no emotion', self.emotion_mappings.get('neutral', {
+            'temperature': 0.70,
+            'speed_factor': 1.0,
+            'eos_threshold': -4.0
+        })))
 
         # Calculate temperature: adjust base temperature by emotion ratio (relative to neutral 0.7)
         emotion_temp_ratio = emotion_params['temperature'] / 0.7  # Scale relative to neutral
@@ -294,7 +296,7 @@ class ParameterMapper:
         """
         try:
             # Check emotion mappings
-            required_emotions = ['joy', 'surprise', 'anger', 'neutral', 'sadness', 'fear', 'disgust']
+            required_emotions = ['joy', 'surprise', 'anger', 'no emotion', 'sadness', 'fear']
             for emotion in required_emotions:
                 if emotion not in self.emotion_mappings:
                     logger.error(f"Missing emotion mapping for: {emotion}")

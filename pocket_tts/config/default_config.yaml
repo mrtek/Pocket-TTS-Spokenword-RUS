@@ -22,26 +22,33 @@ chunking:
 
 # EMOTION ANALYSIS - Used in: EmotionAnalyzer class
 emotion:
-  model: j-hartmann/emotion-english-distilroberta-base
+  model: cointegrated/rubert-tiny2-cedr-emotion-detection  # Russian emotion model
   mappings:
     joy: {temperature: 0.90, speed_factor: 1.15}
-    surprise: {temperature: 0.85, speed_factor: 1.10}
-    anger: {temperature: 0.80, speed_factor: 1.10}
-    neutral: {temperature: 0.70, speed_factor: 1.0}
     sadness: {temperature: 0.65, speed_factor: 0.85}
+    surprise: {temperature: 0.85, speed_factor: 1.10}
     fear: {temperature: 0.60, speed_factor: 0.90}
-    disgust: {temperature: 0.65, speed_factor: 0.95}
+    anger: {temperature: 0.80, speed_factor: 1.10}
+    no emotion: {temperature: 0.70, speed_factor: 1.0}
 
 
   keyword_boosts:
     joy:
-      keywords: [ecstatic, thrilled, delighted, excited, joy, happy, thrilled]
+      keywords: [восторг, радость, счастье, восхищение, ликование, веселье, радостный]
       temperature_boost: 0.03
       speed_boost: 0.02
     anger:
-      keywords: [enraged, infuriated, outraged, mad, grumpy, anger, rage]
+      keywords: [ярость, гнев, злость, бешенство, ненависть, раздражение, злой]
       temperature_boost: 0.05
       speed_boost: 0.03
+    sadness:
+      keywords: [грусть, печаль, тоска, уныние, скорбь, горе, грустный]
+      temperature_boost: 0.02
+      speed_boost: -0.05
+    fear:
+      keywords: [страх, ужас, боязнь, испуг, тревога, паника, страшный]
+      temperature_boost: 0.04
+      speed_boost: 0.05
 
 # PAUSE DURATIONS - Used in: ParameterMapper.calculate_pause()
 pauses:
@@ -50,11 +57,12 @@ pauses:
     paragraph_break: 600   # ms
     chapter_start: 2000    # ms
   emotion_multipliers:
-    anger: 1.3    # Angry pauses are 30% longer
-    fear: 1.2     # Fearful pauses 20% longer
-    sadness: 1.4  # Sad pauses 40% longer
-    joy: 0.9     # Joyful pauses 10% shorter
-    neutral: 1.0  # Baseline
+    anger: 1.3        # Angry pauses are 30% longer
+    fear: 1.2         # Fearful pauses 20% longer
+    sadness: 1.4      # Sad pauses 40% longer
+    joy: 0.9          # Joyful pauses 10% shorter
+    surprise: 0.95    # Surprise pauses 5% shorter
+    no emotion: 1.0   # Baseline (neutral)
 
 # SPEED VARIATION - Used in: SpeedAdjuster class
 speed_variation:

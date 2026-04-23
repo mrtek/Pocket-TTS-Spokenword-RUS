@@ -1,13 +1,13 @@
 [project]
 name = "pocket-tts"
-requires-python = ">= 3.10,<3.15"
+requires-python = ">= 3.10,<3.14"
 description = "Kyutai's pocket-sized TTS!"
 version = "1.0.1"
 readme = "README.md"
 dependencies = [
-    "numpy>=2.2.6",
+    "numpy>=1.26.0,<2.0.0",
     # I tried 2.4.0 but the generated audio is wrong, so 2.5+ is needed.
-    "torch>=2.9.1",
+    "torch>=2.5.0,<2.10.0",
     "pydantic>=2.12.5",
     "sentencepiece>=0.2.1",
     "beartype>=0.22.9",
@@ -24,9 +24,12 @@ dependencies = [
     # Emotion analysis and audio processing
     "transformers>=4.57.6",
     "librosa>=0.11.0",
+    "soundfile>=0.12.0",  # For Silero TTS audio I/O
+    "omegaconf>=2.3.0",  # Required by Silero TTS
     # GUI dependencies
     "qtpy>=2.4.3",
-    "pyqt5>=5.15.11",
+    "pyqt5==5.15.10",
+    "pyqt5-qt5==5.15.2",
     "pyyaml>=6.0.3",
     "pyinstaller>=6.18.0",
     "psutil>=7.2.1",

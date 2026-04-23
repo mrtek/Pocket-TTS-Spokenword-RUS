@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 class EmotionAnalyzer:
     """
-    Analyzes emotions in text using DistilRoBERTa.
+    Analyzes emotions in text using RuBERT for Russian language.
 
     Supports 7 emotions: joy, surprise, anger, neutral, sadness, fear, disgust
     """
 
-    EMOTIONS = ['joy', 'surprise', 'anger', 'neutral', 'sadness', 'fear', 'disgust']
-    MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"
+    # Russian emotion model supports these emotions
+    EMOTIONS = ['joy', 'sadness', 'surprise', 'fear', 'anger', 'no emotion']
+    MODEL_NAME = "cointegrated/rubert-tiny2-cedr-emotion-detection"  # Russian emotion model
 
     def __init__(self, device: str = "auto", model_name: Optional[str] = None):
         """
@@ -131,7 +132,17 @@ class EmotionAnalyzer:
                 )
 
             # Map string to enum
-            emotion_enum = getattr(EmotionType, dominant_label.upper())
+            # Handle "no emotion" -> "NO_EMOTION" and "neutral" -> "NO_EMOTION"
+            if dominant_label == 'neutral':
+                emotion_enum = EmotionType.NO_EMOTION
+            else:
+                emotion_label = dominant_label.upper().replace(' ', '_')
+
+                # Handle "neutral" -> "NO_EMOTION" mapping
+                if emotion_label == 'NEUTRAL':
+                    emotion_enum = EmotionType.NO_EMOTION
+                else:
+                    emotion_enum = getattr(EmotionType, emotion_label)
 
             return {
                 'emotion': emotion_enum,
@@ -151,12 +162,12 @@ class EmotionAnalyzer:
         """
         logger.info("Using mock emotion analysis (transformers not available)")
 
-        # Create mock scores - neutral dominant
+        # Create mock scores - no emotion dominant
         emotion_scores = {emotion: 0.1 for emotion in self.EMOTIONS}
-        emotion_scores['neutral'] = 0.7
+        emotion_scores['no emotion'] = 0.7
 
         # Apply keyword boosts if provided
-        dominant_label = 'neutral'
+        dominant_label = 'no emotion'
         confidence = 0.7
 
         if keyword_boosts:
@@ -164,7 +175,13 @@ class EmotionAnalyzer:
                 text, emotion_scores, keyword_boosts
             )
 
-        emotion_enum = getattr(EmotionType, dominant_label.upper())
+        emotion_label = dominant_label.upper().replace(' ', '_')
+
+        # Handle "neutral" -> "NO_EMOTION" mapping
+        if emotion_label == 'NEUTRAL':
+            emotion_enum = EmotionType.NO_EMOTION
+        else:
+            emotion_enum = getattr(EmotionType, emotion_label)
 
         return {
             'emotion': emotion_enum,
@@ -225,7 +242,13 @@ class EmotionAnalyzer:
                         text, emotion_scores, keyword_boosts
                     )
 
-                emotion_enum = getattr(EmotionType, dominant_label.upper())
+                emotion_label = dominant_label.upper().replace(' ', '_')
+
+                # Handle "neutral" -> "NO_EMOTION" mapping
+                if emotion_label == 'NEUTRAL':
+                    emotion_enum = EmotionType.NO_EMOTION
+                else:
+                    emotion_enum = getattr(EmotionType, emotion_label)
 
                 batch_results.append({
                     'emotion': emotion_enum,
@@ -286,10 +309,10 @@ class EmotionAnalyzer:
     def _default_emotion_result(self) -> Dict[str, Any]:
         """Return default emotion result for error cases."""
         return {
-            'emotion': EmotionType.NEUTRAL,
-            'dominant_emotion': 'neutral',
+            'emotion': EmotionType.NO_EMOTION,
+            'dominant_emotion': 'no emotion',
             'confidence': 1.0,
-            'scores': {emotion: 1.0 if emotion == 'neutral' else 0.0
+            'scores': {emotion: 1.0 if emotion == 'no emotion' else 0.0
                       for emotion in self.EMOTIONS}
         }
 
